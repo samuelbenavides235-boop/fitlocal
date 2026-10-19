@@ -74,12 +74,11 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, 3200);
   };
 
-  // Escuchar sesión de usuario en Supabase y descargar sus datos de la nube
   useEffect(() => {
     if (!supabase) return;
 
     const loadUserSession = async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await supabase!.auth.getSession();
       const sessionUser = data.session?.user;
       if (sessionUser) {
         setUserId(sessionUser.id);
@@ -90,7 +89,7 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     loadUserSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
       const sessionUser = session?.user;
       if (sessionUser) {
         setUserId(sessionUser.id);
@@ -113,7 +112,7 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setCloudSyncStatus('syncing');
     isInitialCloudLoad.current = true;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('fitlocal_user_data')
       .select('db_data')
       .eq('user_id', uid)
@@ -125,9 +124,8 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       storageRepository.save(remoteDb);
       setCloudSyncStatus('synced');
     } else {
-      // Si es usuario nuevo en la nube, subimos su base inicial
       const currentLocal = storageRepository.load();
-      await supabase.from('fitlocal_user_data').upsert({
+      await supabase!.from('fitlocal_user_data').upsert({
         user_id: uid,
         email,
         db_data: currentLocal,
@@ -141,7 +139,6 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, 400);
   };
 
-  // Guardar automáticamente en LocalStorage y en Supabase cada vez que cambian los datos
   useEffect(() => {
     storageRepository.save(db);
 
@@ -149,7 +146,7 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setCloudSyncStatus('syncing');
     const timer = window.setTimeout(async () => {
-      await supabase.from('fitlocal_user_data').upsert({
+      await supabase!.from('fitlocal_user_data').upsert({
         user_id: userId,
         email: userEmail,
         db_data: db,
@@ -163,7 +160,7 @@ export const FitLocalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const signOutUser = async () => {
     if (supabase) {
-      await supabase.auth.signOut();
+      await supabase!.auth.signOut();
     }
     setUserId(null);
     setUserEmail(null);
