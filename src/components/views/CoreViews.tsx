@@ -445,20 +445,20 @@ export const DashboardView: React.FC<{
         <StatCard
           label="Proteína de Hoy"
           value={`${Math.round(todayNutrition.protein)}g / ${targets.proteinGrams}g`}
-          subvalue={`${todayNutrition.calories} kcal de${targets.targetCalories} kcal est.`}
+          subvalue={`${todayNutrition.calories} kcal de ${targets.targetCalories} kcal est.`}
           icon={<Flame className="w-5 h-5" />}
           accent
         />
         <StatCard
           label="Entrenamientos y Cardio"
           value={`${db.workoutSessions.length} sesiones`}
-          subvalue={`${weeklyKm.toFixed(1)} /${db.profile.weeklyRunningGoalKm} km running • ${totalActivityMinutes} min`}
+          subvalue={`${weeklyKm.toFixed(1)} / ${db.profile.weeklyRunningGoalKm} km running • ${totalActivityMinutes} min`}
           icon={<Dumbbell className="w-5 h-5" />}
         />
         <StatCard
           label="Peso e Hidratación"
           value={`${db.profile.weightKg} kg`}
-          subvalue={`Agua hoy: ${latestWellness?.waterMl \vert{}\vert{} 0} /${
+          subvalue={`Agua hoy: ${latestWellness?.waterMl || 0} / ${
             db.profile.dailyWaterGoalMl
           } ml`}
           icon={<Scale className="w-5 h-5" />}
@@ -515,7 +515,7 @@ export const DashboardView: React.FC<{
             </div>
             <p className="text-sm font-bold text-white mt-1">
               {nextPlannedMeal
-                ? `${nextPlannedMeal.day} (${nextPlannedMeal.time}) —${nextPlannedMeal.title}`
+                ? `${nextPlannedMeal.day} (${nextPlannedMeal.time}) — ${nextPlannedMeal.title}`
                 : 'Sin comidas pendientes en el planificador'}
             </p>
           </div>
@@ -526,7 +526,7 @@ export const DashboardView: React.FC<{
             </div>
             <p className="text-sm font-bold text-white mt-1">
               {nextPlannedWorkout
-                ? `${nextPlannedWorkout.day} (${nextPlannedWorkout.time}) —${nextPlannedWorkout.title}`
+                ? `${nextPlannedWorkout.day} (${nextPlannedWorkout.time}) — ${nextPlannedWorkout.title}`
                 : 'Programa tu próxima rutina en el Planificador'}
             </p>
           </div>
