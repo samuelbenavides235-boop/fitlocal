@@ -707,7 +707,7 @@ export const WorkoutsView: React.FC = () => {
             targetReps: String(found.defaultReps),
             targetWeightKg: found.defaultWeightKg,
             restSeconds: selectedRestPreset,
-            equipment: 'Libre'
+            equipment: 'Mancuernas'
           }
         ]
       });
@@ -750,7 +750,7 @@ export const WorkoutsView: React.FC = () => {
             targetReps: String(repsCount),
             targetWeightKg: weightVal,
             restSeconds: selectedRestPreset,
-            equipment: 'Libre'
+            equipment: 'Mancuernas'
           }
         ]
       });
