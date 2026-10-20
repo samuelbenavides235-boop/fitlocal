@@ -16,7 +16,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { FitLocalProvider, useFitLocal } from './context/FitLocalContext';
-import { NavigationTab } from './types/fitlocal';
+import { NavigationTab, UserProfile } from './types/fitlocal';
 import { AuthView } from './components/views/AuthView';
 import {
   DashboardView,
@@ -36,6 +36,8 @@ import {
   ProgressStatsView,
   SettingsView
 } from './components/views/AnalyticsBudgetHistoryViews';
+
+type ProfileWithAvatar = UserProfile & { avatarUrl?: string };
 
 const NAV_ITEMS: {
   id: NavigationTab;
@@ -62,6 +64,15 @@ const FitLocalShell: React.FC = () => {
   const [bypassAuthLocal, setBypassAuthLocal] = useState(false);
   const { db, userEmail, cloudSyncStatus, signOutUser, toastMessage } = useFitLocal();
 
+  const profileWithAvatar = db.profile as ProfileWithAvatar;
+  const avatarUrl = profileWithAvatar.avatarUrl || '';
+  const userInitials = (db.profile.name || 'U')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   if (!userEmail && !bypassAuthLocal) {
     return <AuthView onUseLocalMode={() => setBypassAuthLocal(true)} />;
   }
@@ -69,7 +80,7 @@ const FitLocalShell: React.FC = () => {
   return (
     <div className="min-h-screen bg-charcoal-950 text-slate-100 flex flex-col lg:flex-row">
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-charcoal-900 border-r border-slate-800/80 p-4">
-        <div className="flex items-center gap-2.5 px-2 py-3 border-b border-slate-800 mb-4">
+        <div className="flex items-center gap-2.5 px-2 py-3 border-b border-slate-800 mb-3">
           <div className="w-8 h-8 rounded-xl bg-lime-400 flex items-center justify-center text-charcoal-950 font-black text-lg">
             F
           </div>
@@ -82,6 +93,30 @@ const FitLocalShell: React.FC = () => {
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          className="flex items-center gap-3 p-2.5 mb-3 rounded-xl bg-charcoal-800/80 hover:bg-charcoal-800 border border-slate-800 text-left transition"
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={db.profile.name}
+              className="w-10 h-10 rounded-full object-cover border-2 border-lime-400 shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-lime-400/20 border border-lime-400/50 text-lime-300 font-extrabold text-xs flex items-center justify-center shrink-0">
+              {userInitials}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-extrabold text-white truncate">{db.profile.name}</p>
+            <p className="text-[11px] text-slate-400 truncate">
+              {db.profile.weightKg} kg • Editar foto/perfil
+            </p>
+          </div>
+        </button>
 
         <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
           {NAV_ITEMS.map((item) => {
@@ -146,9 +181,22 @@ const FitLocalShell: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab('profile')}
-              className="px-3 py-1.5 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 border border-slate-700 text-xs font-bold text-slate-200"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 border border-slate-700 text-xs font-bold text-slate-200 transition"
             >
-              {db.profile.name} ({db.profile.weightKg} kg)
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={db.profile.name}
+                  className="w-6 h-6 rounded-full object-cover border border-lime-400"
+                />
+              ) : (
+                <span className="w-6 h-6 rounded-full bg-lime-400/20 border border-lime-400/40 text-lime-300 text-[10px] font-extrabold flex items-center justify-center">
+                  {userInitials}
+                </span>
+              )}
+              <span className="hidden sm:inline">
+                {db.profile.name} ({db.profile.weightKg} kg)
+              </span>
             </button>
 
             {userEmail ? (

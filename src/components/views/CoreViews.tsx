@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  BookmarkPlus,
   Calendar,
+  Camera,
   CheckCircle2,
+  ChevronDown,
   Dumbbell,
   Flame,
   Plus,
@@ -26,11 +29,14 @@ import { useFitLocal } from '../../context/FitLocalContext';
 import { COLOMBIAN_CITIES } from '../../data/colombiaCatalog';
 import {
   DayOfWeek,
+  FoodItem,
   MealSlot,
   NavigationTab,
   PlannedActivityType,
+  Recipe,
   RecipeIngredient,
-  StoreName
+  StoreName,
+  UserProfile
 } from '../../types/fitlocal';
 import {
   calculateIngredientsTotals,
@@ -46,6 +52,220 @@ import {
   SectionHeader,
   StatCard
 } from '../ui/CommonUI';
+
+type ProfileWithAvatar = UserProfile & { avatarUrl?: string };
+
+const PRESET_AVATARS = [
+  {
+    label: 'Atleta Verde',
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="#131B26"/><circle cx="60" cy="45" r="22" fill="#A3E635"/><path d="M24 108c6-24 24-36 36-36s30 12 36 36" fill="#A3E635"/></svg>'
+    )}`
+  },
+  {
+    label: 'Fuerza Pro',
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="#0F172A"/><circle cx="60" cy="45" r="22" fill="#38BDF8"/><path d="M24 108c6-24 24-36 36-36s30 12 36 36" fill="#38BDF8"/></svg>'
+    )}`
+  },
+  {
+    label: 'Runner Urbano',
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="#1E1B4B"/><circle cx="60" cy="45" r="22" fill="#F59E0B"/><path d="M24 108c6-24 24-36 36-36s30 12 36 36" fill="#F59E0B"/></svg>'
+    )}`
+  },
+  {
+    label: 'Energía Fit',
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="60" fill="#31102F"/><circle cx="60" cy="45" r="22" fill="#F43F5E"/><path d="M24 108c6-24 24-36 36-36s30 12 36 36" fill="#F43F5E"/></svg>'
+    )}`
+  }
+];
+
+function buildExtendedColombianMenuBank(foods: FoodItem[], existingRecipes: Recipe[]): Recipe[] {
+  const findFoodId = (keywords: string[], fallbackIndex = 0): string => {
+    for (const kw of keywords) {
+      const match = foods.find((f) => f.name.toLowerCase().includes(kw.toLowerCase()));
+      if (match) return match.id;
+    }
+    return foods[fallbackIndex % Math.max(1, foods.length)]?.id || 'food-1';
+  };
+
+  const eggId = findFoodId(['huevo'], 0);
+  const arepaId = findFoodId(['arepa', 'maíz', 'maiz'], 1);
+  const cheeseId = findFoodId(['queso', 'cuajada', 'costeño'], 2);
+  const chickenId = findFoodId(['pechuga', 'pollo'], 3);
+  const riceId = findFoodId(['arroz'], 4);
+  const avocadoId = findFoodId(['aguacate'], 5);
+  const oatsId = findFoodId(['avena'], 6);
+  const bananaId = findFoodId(['banano', 'plátano', 'platano'], 7);
+  const lentilId = findFoodId(['lenteja', 'fríjol', 'frijol'], 8);
+  const tunaId = findFoodId(['atún', 'atun', 'pescado', 'tilapia'], 9);
+  const beefId = findFoodId(['carne', 'res', 'lomo'], 10);
+  const potatoId = findFoodId(['papa', 'yuca'], 11);
+  const yogurtId = findFoodId(['yogur', 'leche'], 12);
+
+  const extraProposals: Recipe[] = [
+    {
+      id: 'prop-col-1',
+      name: 'Arepa Asada con Pericos Proteicos y Queso',
+      slot: 'Desayuno',
+      prepTimeMinutes: 12,
+      servings: 1,
+      ingredients: [
+        { foodId: eggId, grams: 150 },
+        { foodId: arepaId, grams: 100 },
+        { foodId: cheeseId, grams: 45 }
+      ],
+      instructions: ['Asar la arepa, preparar huevos revueltos con tomate y cebolla y acompañar con queso.'],
+      tags: ['Económico', 'Tradicional', 'Alta proteína']
+    },
+    {
+      id: 'prop-col-2',
+      name: 'Pancakes de Avena, Banano y Huevo',
+      slot: 'Desayuno',
+      prepTimeMinutes: 15,
+      servings: 1,
+      ingredients: [
+        { foodId: oatsId, grams: 70 },
+        { foodId: bananaId, grams: 100 },
+        { foodId: eggId, grams: 120 }
+      ],
+      instructions: ['Licuar o mezclar la avena con el banano y los huevos, y dorar en sartén antiadherente.'],
+      tags: ['Energía', 'Rápido', 'Sin azúcar añadida']
+    },
+    {
+      id: 'prop-col-3',
+      name: 'Calentado Fit de Arroz, Pollo Desmechado y Huevo',
+      slot: 'Desayuno',
+      prepTimeMinutes: 14,
+      servings: 1,
+      ingredients: [
+        { foodId: riceId, grams: 130 },
+        { foodId: chickenId, grams: 120 },
+        { foodId: eggId, grams: 60 }
+      ],
+      instructions: ['Saltear el arroz con la pechuga desmechada y coronar con huevo a la plancha.'],
+      tags: ['Ganancia muscular', 'Colombiano']
+    },
+    {
+      id: 'prop-col-4',
+      name: 'Corrientazo Fit: Pechuga a la Plancha, Arroz y Aguacate',
+      slot: 'Almuerzo',
+      prepTimeMinutes: 22,
+      servings: 1,
+      ingredients: [
+        { foodId: chickenId, grams: 180 },
+        { foodId: riceId, grams: 150 },
+        { foodId: avocadoId, grams: 80 }
+      ],
+      instructions: ['Dorar la pechuga con especias y servir con arroz blanco y tajadas de aguacate.'],
+      tags: ['Alta proteína', 'Almuerzo base']
+    },
+    {
+      id: 'prop-col-5',
+      name: 'Cazuela Proteica de Lentejas con Carne Magra y Arroz',
+      slot: 'Almuerzo',
+      prepTimeMinutes: 25,
+      servings: 1,
+      ingredients: [
+        { foodId: lentilId, grams: 140 },
+        { foodId: beefId, grams: 140 },
+        { foodId: riceId, grams: 120 }
+      ],
+      instructions: ['Servir las lentejas guisadas acompañadas de carne asada en tiras y porción medida de arroz.'],
+      tags: ['Económico', 'Hierro y Fibra']
+    },
+    {
+      id: 'prop-col-6',
+      name: 'Carne Asada con Papa al Vapor y Aguacate',
+      slot: 'Almuerzo',
+      prepTimeMinutes: 25,
+      servings: 1,
+      ingredients: [
+        { foodId: beefId, grams: 180 },
+        { foodId: potatoId, grams: 180 },
+        { foodId: avocadoId, grams: 70 }
+      ],
+      instructions: ['Cocinar la papa al vapor con sal marina y acompañar con carne magra a la plancha.'],
+      tags: ['Saciedad', 'Fuerza']
+    },
+    {
+      id: 'prop-col-7',
+      name: 'Bowl Costeño de Atún, Arroz y Aguacate',
+      slot: 'Cena',
+      prepTimeMinutes: 10,
+      servings: 1,
+      ingredients: [
+        { foodId: tunaId, grams: 140 },
+        { foodId: riceId, grams: 110 },
+        { foodId: avocadoId, grams: 75 }
+      ],
+      instructions: ['Mezclar el atún escurrido con limón, cilantro, aguacate en cubos y base de arroz.'],
+      tags: ['Rápido', 'Definición']
+    },
+    {
+      id: 'prop-col-8',
+      name: 'Tortilla Nocturna de Pollo, Huevo y Queso',
+      slot: 'Cena',
+      prepTimeMinutes: 12,
+      servings: 1,
+      ingredients: [
+        { foodId: chickenId, grams: 130 },
+        { foodId: eggId, grams: 100 },
+        { foodId: cheeseId, grams: 40 }
+      ],
+      instructions: ['Batir los huevos, rellenar con pollo previamente cocido y gratinar con el queso.'],
+      tags: ['Baja en carbohidratos', 'Pérdida de grasa']
+    },
+    {
+      id: 'prop-col-9',
+      name: 'Pescado / Atún a la Plancha con Papa Cocida',
+      slot: 'Cena',
+      prepTimeMinutes: 18,
+      servings: 1,
+      ingredients: [
+        { foodId: tunaId, grams: 170 },
+        { foodId: potatoId, grams: 150 },
+        { foodId: avocadoId, grams: 60 }
+      ],
+      instructions: ['Sellar el filete o lomo en sartén con ajo y servir con papa al vapor.'],
+      tags: ['Ligero', 'Recuperación']
+    },
+    {
+      id: 'prop-col-10',
+      name: 'Bowl Post-Entreno de Yogur/Leche, Avena y Banano',
+      slot: 'Snack',
+      prepTimeMinutes: 5,
+      servings: 1,
+      ingredients: [
+        { foodId: yogurtId, grams: 200 },
+        { foodId: oatsId, grams: 50 },
+        { foodId: bananaId, grams: 100 }
+      ],
+      instructions: ['Servir frío con rodajas de banano y hojuelas de avena.'],
+      tags: ['Post-entreno', 'Rápido']
+    },
+    {
+      id: 'prop-col-11',
+      name: 'Tostada de Arepa con Queso y Huevo Cocido',
+      slot: 'Snack',
+      prepTimeMinutes: 8,
+      servings: 1,
+      ingredients: [
+        { foodId: arepaId, grams: 80 },
+        { foodId: cheeseId, grams: 50 },
+        { foodId: eggId, grams: 60 }
+      ],
+      instructions: ['Tostar la arepa y colocar encima el queso fresco y huevo duro en rodajas.'],
+      tags: ['Media tarde', 'Económico']
+    }
+  ];
+
+  const existingNames = new Set(existingRecipes.map((r) => r.name.toLowerCase()));
+  const filteredExtras = extraProposals.filter((p) => !existingNames.has(p.name.toLowerCase()));
+  return [...existingRecipes, ...filteredExtras];
+}
 
 const DAYS_ORDER: DayOfWeek[] = [
   'Lunes',
@@ -69,6 +289,7 @@ export const DashboardView: React.FC<{
 }> = ({ onNavigate }) => {
   const { db, clearDemoData } = useFitLocal();
   const todayStr = new Date().toISOString().split('T')[0];
+  const profileWithAvatar = db.profile as ProfileWithAvatar;
 
   const targets = useMemo(
     () => calculateNutritionalTargets(db.profile),
@@ -156,61 +377,88 @@ export const DashboardView: React.FC<{
         </div>
       )}
 
-      <SectionHeader
-        title={`Hola, ${db.profile.name}`}
-        subtitle={`${new Date().toLocaleDateString('es-CO', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        })} • ${db.profile.city}, Colombia • Objetivo: ${
-          GOAL_LABELS[db.profile.goal]
-        }`}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onNavigate('nutrition')}
-              className="px-3.5 py-2 rounded-xl bg-lime-400 hover:bg-lime-500 text-charcoal-950 font-bold text-xs flex items-center gap-1.5 transition"
-            >
-              <Plus className="w-4 h-4" /> Registrar Comida
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('workouts')}
-              className="px-3.5 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
-            >
-              <Dumbbell className="w-4 h-4 text-lime-400" /> Entrenar
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('running')}
-              className="px-3.5 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
-            >
-              <Activity className="w-4 h-4 text-lime-400" /> Añadir Carrera
-            </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-charcoal-900/90 border border-slate-800 p-4 rounded-2xl">
+        <div className="flex items-center gap-3.5">
+          <button
+            type="button"
+            onClick={() => onNavigate('profile')}
+            className="relative group shrink-0"
+            title="Cambiar foto de perfil"
+          >
+            {profileWithAvatar.avatarUrl ? (
+              <img
+                src={profileWithAvatar.avatarUrl}
+                alt={db.profile.name}
+                className="w-14 h-14 rounded-2xl object-cover border-2 border-lime-400 shadow-lg"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-lime-400/20 border-2 border-lime-400/50 text-lime-300 font-black text-lg flex items-center justify-center">
+                {db.profile.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-lime-400 text-charcoal-950 flex items-center justify-center shadow">
+              <Camera className="w-3.5 h-3.5" />
+            </span>
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-white">
+              Hola, {db.profile.name}
+            </h1>
+            <p className="text-xs text-slate-400">
+              {new Date().toLocaleDateString('es-CO', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}{' '}
+              • {db.profile.city}, Colombia • Objetivo: {GOAL_LABELS[db.profile.goal]}
+            </p>
           </div>
-        }
-      />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigate('nutrition')}
+            className="px-3.5 py-2 rounded-xl bg-lime-400 hover:bg-lime-500 text-charcoal-950 font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <Plus className="w-4 h-4" /> Registrar Comida
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('workouts')}
+            className="px-3.5 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
+          >
+            <Dumbbell className="w-4 h-4 text-lime-400" /> Entrenar
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('running')}
+            className="px-3.5 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
+          >
+            <Activity className="w-4 h-4 text-lime-400" /> Añadir Carrera
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Proteína de Hoy"
           value={`${Math.round(todayNutrition.protein)}g / ${targets.proteinGrams}g`}
-          subvalue={`${todayNutrition.calories} kcal de ${targets.targetCalories} kcal est.`}
+          subvalue={`${todayNutrition.calories} kcal de${targets.targetCalories} kcal est.`}
           icon={<Flame className="w-5 h-5" />}
           accent
         />
         <StatCard
           label="Entrenamientos y Cardio"
           value={`${db.workoutSessions.length} sesiones`}
-          subvalue={`${weeklyKm.toFixed(1)} / ${db.profile.weeklyRunningGoalKm} km running • ${totalActivityMinutes} min`}
+          subvalue={`${weeklyKm.toFixed(1)} /${db.profile.weeklyRunningGoalKm} km running • ${totalActivityMinutes} min`}
           icon={<Dumbbell className="w-5 h-5" />}
         />
         <StatCard
           label="Peso e Hidratación"
           value={`${db.profile.weightKg} kg`}
-          subvalue={`Agua hoy: ${latestWellness?.waterMl || 0} / ${
+          subvalue={`Agua hoy: ${latestWellness?.waterMl \vert{}\vert{} 0} /${
             db.profile.dailyWaterGoalMl
           } ml`}
           icon={<Scale className="w-5 h-5" />}
@@ -267,7 +515,7 @@ export const DashboardView: React.FC<{
             </div>
             <p className="text-sm font-bold text-white mt-1">
               {nextPlannedMeal
-                ? `${nextPlannedMeal.day} (${nextPlannedMeal.time}) — ${nextPlannedMeal.title}`
+                ? `${nextPlannedMeal.day} (${nextPlannedMeal.time}) —${nextPlannedMeal.title}`
                 : 'Sin comidas pendientes en el planificador'}
             </p>
           </div>
@@ -278,7 +526,7 @@ export const DashboardView: React.FC<{
             </div>
             <p className="text-sm font-bold text-white mt-1">
               {nextPlannedWorkout
-                ? `${nextPlannedWorkout.day} (${nextPlannedWorkout.time}) — ${nextPlannedWorkout.title}`
+                ? `${nextPlannedWorkout.day} (${nextPlannedWorkout.time}) —${nextPlannedWorkout.title}`
                 : 'Programa tu próxima rutina en el Planificador'}
             </p>
           </div>
@@ -314,16 +562,56 @@ export const DashboardView: React.FC<{
 };
 
 export const ProfileGoalsView: React.FC = () => {
-  const { db, updateProfile } = useFitLocal();
-  const [form, setForm] = useState(db.profile);
+  const { db, updateProfile, notify } = useFitLocal();
+  const [form, setForm] = useState<ProfileWithAvatar>(
+    db.profile as ProfileWithAvatar
+  );
   const [excludedInput, setExcludedInput] = useState(
     db.profile.excludedFoods.join(', ')
   );
   const [allergiesInput, setAllergiesInput] = useState(
     db.profile.allergies.join(', ')
   );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const targets = useMemo(() => calculateNutritionalTargets(form), [form]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 240;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          const updated = { ...form, avatarUrl: compressedDataUrl };
+          setForm(updated);
+          updateProfile(updated);
+          notify('Foto de perfil actualizada y sincronizada.');
+        }
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectPresetAvatar = (url: string) => {
+    const updated = { ...form, avatarUrl: url };
+    setForm(updated);
+    updateProfile(updated);
+    notify('Avatar deportivo aplicado.');
+  };
 
   const toggleStore = (store: StoreName) => {
     const exists = form.preferredStores.includes(store);
@@ -351,14 +639,84 @@ export const ProfileGoalsView: React.FC = () => {
   return (
     <div className="space-y-6">
       <SectionHeader
-        title="Mi Perfil, Biometría y Objetivos"
-        subtitle="Configura tus parámetros físicos, ciudad en Colombia y presupuesto para personalizar los cálculos."
+        title="Mi Perfil, Foto y Objetivos"
+        subtitle="Personaliza tu foto de usuario, biometría, ciudad en Colombia y presupuesto."
       />
 
       <DisclaimerBanner text="Aviso de transparencia: Las necesidades calóricas y de macronutrientes se calculan mediante la ecuación predictiva de Mifflin-St Jeor como estimaciones orientativas. FITLOCAL no reemplaza el diagnóstico de un médico o nutricionista clínico." />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6">
+          <Card className="space-y-4">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Camera className="w-5 h-5 text-lime-400" /> Foto de Perfil e Identidad
+            </h2>
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-charcoal-800/70 border border-slate-800">
+              {form.avatarUrl ? (
+                <img
+                  src={form.avatarUrl}
+                  alt={form.name}
+                  className="w-24 h-24 rounded-2xl object-cover border-2 border-lime-400 shadow-lg shrink-0"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-2xl bg-lime-400/20 border-2 border-lime-400/40 text-lime-300 font-black text-2xl flex items-center justify-center shrink-0">
+                  {form.name.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+
+              <div className="space-y-3 flex-1 text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-lime-400 hover:bg-lime-500 text-charcoal-950 font-extrabold text-xs flex items-center gap-1.5 transition"
+                  >
+                    <Camera className="w-4 h-4" /> Subir Foto desde Celular / PC
+                  </button>
+                  {form.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...form, avatarUrl: '' };
+                        setForm(updated);
+                        updateProfile(updated);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-charcoal-900 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 text-xs font-semibold transition"
+                    >
+                      Quitar foto
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-[11px] text-slate-400 mb-1.5">
+                    O elige un avatar rápido:
+                  </p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2">
+                    {PRESET_AVATARS.map((av) => (
+                      <button
+                        key={av.label}
+                        type="button"
+                        onClick={() => handleSelectPresetAvatar(av.url)}
+                        title={av.label}
+                        className="w-9 h-9 rounded-full overflow-hidden border-2 border-slate-700 hover:border-lime-400 transition"
+                      >
+                        <img src={av.url} alt={av.label} className="w-full h-full" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <Card className="space-y-4">
             <h2 className="text-base font-bold text-white">
               1. Datos Físicos y Ubicación
@@ -664,7 +1022,34 @@ export const NutritionView: React.FC = () => {
   const [gramsInput, setGramsInput] = useState(150);
   const [draftItems, setDraftItems] = useState<RecipeIngredient[]>([]);
   const [searchFood, setSearchFood] = useState('');
-  const [generatedMenu, setGeneratedMenu] = useState(db.recipes.slice(0, 3));
+
+  const [proposalFilterSlot, setProposalFilterSlot] = useState<MealSlot | 'Todos'>('Todos');
+  const [visibleProposalsCount, setVisibleProposalsCount] = useState(4);
+  const [shuffleSeed, setShuffleSeed] = useState(0);
+
+  const allMenuProposals = useMemo(() => {
+    const bank = buildExtendedColombianMenuBank(db.foods, db.recipes);
+    const excluded = db.profile.excludedFoods.map((s) => s.toLowerCase());
+    const valid = bank.filter((rec) => {
+      const matchesSlot =
+        proposalFilterSlot === 'Todos' || rec.slot === proposalFilterSlot;
+      const hasExcluded = rec.ingredients.some((ing) => {
+        const f = db.foods.find((fo) => fo.id === ing.foodId);
+        return f && excluded.some((ex) => f.name.toLowerCase().includes(ex));
+      });
+      return matchesSlot && !hasExcluded;
+    });
+
+    const listToUse = valid.length > 0 ? valid : bank;
+    if (shuffleSeed === 0) return listToUse;
+    return [...listToUse].sort((a, b) => {
+      const hashA = (a.id.charCodeAt(0) + shuffleSeed * 17) % 13;
+      const hashB = (b.id.charCodeAt(0) + shuffleSeed * 31) % 13;
+      return hashA - hashB;
+    });
+  }, [db.foods, db.recipes, db.profile.excludedFoods, proposalFilterSlot, shuffleSeed]);
+
+  const displayedProposals = allMenuProposals.slice(0, visibleProposalsCount);
 
   const draftTotals = useMemo(
     () => calculateIngredientsTotals(draftItems, db.foods),
@@ -712,18 +1097,8 @@ export const NutritionView: React.FC = () => {
     });
   };
 
-  const handleRegenerateSmartMenu = () => {
-    const excluded = db.profile.excludedFoods.map((s) => s.toLowerCase());
-    const validRecipes = db.recipes.filter((rec) => {
-      return !rec.ingredients.some((ing) => {
-        const f = db.foods.find((fo) => fo.id === ing.foodId);
-        return f && excluded.some((ex) => f.name.toLowerCase().includes(ex));
-      });
-    });
-    const shuffled = [
-      ...(validRecipes.length > 0 ? validRecipes : db.recipes)
-    ].sort(() => Math.random() - 0.5);
-    setGeneratedMenu(shuffled.slice(0, 3));
+  const handleShuffleProposals = () => {
+    setShuffleSeed((s) => s + 1);
   };
 
   const filteredFoods = db.foods.filter(
@@ -736,11 +1111,11 @@ export const NutritionView: React.FC = () => {
     <div className="space-y-6">
       <SectionHeader
         title="Alimentación Inteligente y Recetario Colombiano"
-        subtitle="Registra tus comidas en gramos, calcula macros y costos por porción en COP o genera propuestas automáticas."
+        subtitle="Registra tus comidas en gramos, calcula macros y costos por porción en COP o explora propuestas de menú."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 space-y-4">
+        <Card className="lg:col-span-2 space-y-4 h-fit">
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <Utensils className="w-5 h-5 text-lime-400" /> Registrar Comida o Crear
             Receta Propia
@@ -880,24 +1255,46 @@ export const NutritionView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-lime-400" /> Propuesta de Menú
+                <Sparkles className="w-4 h-4 text-lime-400" /> Propuestas de Menú ({allMenuProposals.length})
               </h2>
               <p className="text-xs text-slate-400">
-                Adaptado a presupuesto ({formatCOP(db.profile.weeklyBudgetCOP)}/sem)
+                Adaptadas a {formatCOP(db.profile.weeklyBudgetCOP)}/sem
               </p>
             </div>
             <button
               type="button"
-              onClick={handleRegenerateSmartMenu}
-              className="p-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-lime-400 border border-slate-700"
-              title="Regenerar combinación"
+              onClick={handleShuffleProposals}
+              className="px-2.5 py-1.5 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-lime-400 border border-slate-700 text-xs font-bold flex items-center gap-1"
+              title="Rotar orden de propuestas"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-3.5 h-3.5" /> Rotar
             </button>
           </div>
 
-          <div className="space-y-3">
-            {generatedMenu.map((rec) => {
+          <div className="flex flex-wrap gap-1.5">
+            {(['Todos', 'Desayuno', 'Almuerzo', 'Cena', 'Snack'] as const).map(
+              (slotOption) => (
+                <button
+                  key={slotOption}
+                  type="button"
+                  onClick={() => {
+                    setProposalFilterSlot(slotOption);
+                    setVisibleProposalsCount(4);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                    proposalFilterSlot === slotOption
+                      ? 'bg-lime-400 text-charcoal-950 border-lime-400'
+                      : 'bg-charcoal-800 text-slate-300 border-slate-700 hover:text-white'
+                  }`}
+                >
+                  {slotOption}
+                </button>
+              )
+            )}
+          </div>
+
+          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+            {displayedProposals.map((rec) => {
               const macros = calculateIngredientsTotals(rec.ingredients, db.foods);
               return (
                 <div
@@ -913,32 +1310,62 @@ export const NutritionView: React.FC = () => {
                   <h3 className="text-sm font-bold text-white">{rec.name}</h3>
                   <p className="text-xs text-slate-300">
                     {macros.calories} kcal • <strong>{macros.protein}g Prot</strong>{' '}
-                    • {macros.carbs}g Carbs
+                    • {macros.carbs}g Carbs • {macros.fats}g Grasas
                   </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      addMealLog({
-                        id: `meal-rec-${Date.now()}`,
-                        date: todayStr,
-                        slot: rec.slot,
-                        title: rec.name,
-                        items: rec.ingredients,
-                        totalCalories: macros.calories,
-                        totalProtein: macros.protein,
-                        totalCarbs: macros.carbs,
-                        totalFats: macros.fats,
-                        estimatedCostCOP: macros.costCOP
-                      })
-                    }
-                    className="w-full py-1.5 rounded-lg bg-lime-400/15 hover:bg-lime-400/25 text-lime-300 text-xs font-bold border border-lime-400/30 transition"
-                  >
-                    + Marcar como consumida hoy
-                  </button>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        addMealLog({
+                          id: `meal-rec-${Date.now()}`,
+                          date: todayStr,
+                          slot: rec.slot,
+                          title: rec.name,
+                          items: rec.ingredients,
+                          totalCalories: macros.calories,
+                          totalProtein: macros.protein,
+                          totalCarbs: macros.carbs,
+                          totalFats: macros.fats,
+                          estimatedCostCOP: macros.costCOP
+                        })
+                      }
+                      className="py-1.5 px-2 rounded-lg bg-lime-400/15 hover:bg-lime-400/25 text-lime-300 text-xs font-bold border border-lime-400/30 transition"
+                    >
+                      + Consumir hoy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addOrUpdateRecipe(rec)}
+                      className="py-1.5 px-2 rounded-lg bg-charcoal-900 hover:bg-charcoal-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center justify-center gap-1 transition"
+                    >
+                      <BookmarkPlus className="w-3.5 h-3.5 text-lime-400" /> Guardar
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
+
+          {visibleProposalsCount < allMenuProposals.length ? (
+            <button
+              type="button"
+              onClick={() => setVisibleProposalsCount((c) => c + 4)}
+              className="w-full py-2.5 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-lime-400 font-extrabold text-xs border border-lime-400/30 flex items-center justify-center gap-1.5 transition"
+            >
+              <ChevronDown className="w-4 h-4" /> Cargar más propuestas (
+              {allMenuProposals.length - visibleProposalsCount} restantes)
+            </button>
+          ) : (
+            allMenuProposals.length > 4 && (
+              <button
+                type="button"
+                onClick={() => setVisibleProposalsCount(4)}
+                className="w-full py-2 rounded-xl bg-charcoal-900 text-slate-400 hover:text-white text-xs border border-slate-800 transition"
+              >
+                Mostrar menos propuestas
+              </button>
+            )
+          )}
         </Card>
       </div>
 
@@ -1085,7 +1512,7 @@ export const MealPlannerView: React.FC = () => {
             Atención: Se detectaron conflictos de horario en tu semana:
           </p>
           {conflicts.map((c, idx) => (
-            <p key={idx}>• {c}</p>
+            <p key={idx}>{c}</p>
           ))}
         </div>
       )}
